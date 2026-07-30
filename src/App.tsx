@@ -67,13 +67,23 @@ export default function App() {
     if (user?.isAdmin) setIsAdmin(true);
   }, []);
 
-  // Update progress dict periodically when user streams
+  // Update progress dict & catalog live when user streams or admin saves
   useEffect(() => {
-    const handleStorageChange = () => {
+    const handleStorageChange = (e?: any) => {
+      if (e && e.detail) {
+        setMovies(e.detail);
+      } else {
+        setMovies(getStoredMovies());
+      }
       setProgressDict(getStoredProgress());
+      setBunnySettingsState(getBunnySettings());
     };
     window.addEventListener('storage', handleStorageChange);
-    return () => window.removeEventListener('storage', handleStorageChange);
+    window.addEventListener('movieflix_catalog_updated', handleStorageChange);
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('movieflix_catalog_updated', handleStorageChange);
+    };
   }, []);
 
   const handleSaveMovies = (newCatalog: Movie[]) => {

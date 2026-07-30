@@ -18,7 +18,12 @@ import {
   ExternalLink,
   Zap,
   HardDrive,
-  Grid
+  Grid,
+  Download,
+  Upload,
+  Copy,
+  Globe,
+  Share2
 } from 'lucide-react';
 import { Movie, BunnyStreamSettings, DownloadUrls } from '../types';
 import { getBunnySettings, saveBunnySettings, resetMoviesCatalog } from '../lib/storage';
@@ -38,10 +43,48 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
   onSaveBunnySettings,
   onLogoutAdmin,
 }) => {
-  const [adminTab, setAdminTab] = useState<'movies' | 'settings'>('movies');
+  const [adminTab, setAdminTab] = useState<'movies' | 'settings' | 'deploy'>('movies');
   const [searchAdmin, setSearchAdmin] = useState('');
   const [isEditing, setIsEditing] = useState<Movie | null>(null);
   const [isCreating, setIsCreating] = useState(false);
+
+  // Export & Import Catalog Helpers
+  const handleExportJSON = () => {
+    const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(movies, null, 2));
+    const downloadAnchor = document.createElement('a');
+    downloadAnchor.setAttribute('href', dataStr);
+    downloadAnchor.setAttribute('download', 'movieflix_catalog.json');
+    document.body.appendChild(downloadAnchor);
+    downloadAnchor.click();
+    downloadAnchor.remove();
+    showNotification('Catalog JSON downloaded successfully!');
+  };
+
+  const handleImportJSON = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const fileReader = new FileReader();
+    if (e.target.files && e.target.files[0]) {
+      fileReader.readAsText(e.target.files[0], 'UTF-8');
+      fileReader.onload = (event) => {
+        try {
+          const parsed = JSON.parse(event.target?.result as string);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            onSaveMovies(parsed);
+            showNotification(`Successfully imported ${parsed.length} items to catalog!`);
+          } else {
+            alert('Invalid catalog JSON structure. Must be an array of movies.');
+          }
+        } catch {
+          alert('Failed to parse JSON file.');
+        }
+      };
+    }
+  };
+
+  const handleCopyTSCode = () => {
+    const code = `import { Movie } from '../types';\n\nexport const INITIAL_MOVIES: Movie[] = ${JSON.stringify(movies, null, 2)};\n`;
+    navigator.clipboard.writeText(code);
+    showNotification('Copied TypeScript code for initialMovies.ts to clipboard!');
+  };
 
   // Bunny Settings State
   const [libId, setLibId] = useState(bunnySettings.libraryId || '');
@@ -150,8 +193,11 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
       imdbRating: Number(formState.imdbRating) || 7.5,
       director: formState.director || 'Unknown',
       cast: formState.cast || [],
+      episodes: formState.episodes || [],
+      viewsCount: formState.viewsCount || 0,
       trailerUrl: formState.trailerUrl || '',
       bunnyVideoId: formState.bunnyVideoId || '',
+      bunnyLibraryId: formState.bunnyLibraryId || '',
       directStreamUrl: formState.directStreamUrl || '',
       downloadUrls: formState.downloadUrls || {},
       isFeatured: !!formState.isFeatured,
@@ -339,28 +385,40 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
         </div>
 
       {/* Tabs Header */}
-      <div className="flex border-b border-white/10">
+      <div className="flex border-b border-white/10 overflow-x-auto">
         <button
           onClick={() => setAdminTab('movies')}
-          className={`py-3 px-6 text-sm font-bold border-b-2 transition-colors flex items-center space-x-2 ${
+          className={`py-3 px-6 text-sm font-bold border-b-2 transition-colors flex items-center space-x-2 whitespace-nowrap ${
             adminTab === 'movies'
               ? 'border-red-600 text-red-500'
               : 'border-transparent text-gray-400 hover:text-white'
           }`}
         >
           <Film className="w-4 h-4" />
-          <span>Manage Movies & TV Shows ({movies.length})</span>
+          <span>Manage Movies ({movies.length})</span>
         </button>
         <button
           onClick={() => setAdminTab('settings')}
-          className={`py-3 px-6 text-sm font-bold border-b-2 transition-colors flex items-center space-x-2 ${
+          className={`py-3 px-6 text-sm font-bold border-b-2 transition-colors flex items-center space-x-2 whitespace-nowrap ${
             adminTab === 'settings'
               ? 'border-amber-500 text-amber-400'
               : 'border-transparent text-gray-400 hover:text-white'
           }`}
         >
           <Settings className="w-4 h-4" />
-          <span>Bunny Stream & API Config</span>
+          <span>Bunny Stream Config</span>
+        </button>
+        <button
+          onClick={() => setAdminTab('deploy')}
+          className={`py-3 px-6 text-sm font-bold border-b-2 transition-colors flex items-center space-x-2 whitespace-nowrap ${
+            adminTab === 'deploy'
+              ? 'border-emerald-500 text-emerald-400'
+              : 'border-transparent text-gray-400 hover:text-white'
+          }`}
+          id="admin-tab-deploy-btn"
+        >
+          <Globe className="w-4 h-4" />
+          <span>Public Hosting & Data Sync</span>
         </button>
       </div>
 
@@ -577,6 +635,85 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
               Save Configuration
             </button>
           </form>
+        </div>
+      )}
+
+      {/* TAB 3: PUBLIC HOSTING & DATA SYNC */}
+      {adminTab === 'deploy' && (
+        <div className="space-y-6 animate-fadeIn">
+          {/* Informational Guidance Box */}
+          <div className="p-6 rounded-3xl bg-zinc-900/90 border border-emerald-500/30 space-y-3 shadow-xl">
+            <div className="flex items-center space-x-2 text-emerald-400">
+              <Globe className="w-5 h-5" />
+              <h3 className="font-bold text-base text-white">How Public Deployment & Data Persistence Works</h3>
+            </div>
+            <p className="text-xs text-gray-300 leading-relaxed">
+              When you deploy this website publicly (e.g. on <strong className="text-emerald-400">Netlify, Vercel, GitHub Pages, or Web App</strong>), all changes made in this admin panel update instantly in your local browser.
+            </p>
+            <p className="text-xs text-gray-300 leading-relaxed">
+              To make your new movies and edits permanent for <strong className="text-white">ALL public users visiting your website</strong> on any phone or device, use the 1-click tools below to download or copy your updated catalog directly into the source code!
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Download / Upload JSON Backup */}
+            <div className="p-6 rounded-3xl bg-zinc-900 border border-white/10 space-y-4 flex flex-col justify-between">
+              <div className="space-y-2">
+                <div className="flex items-center space-x-2 text-amber-400">
+                  <HardDrive className="w-5 h-5" />
+                  <h4 className="font-bold text-white text-sm">Backup & Restore Catalog (JSON)</h4>
+                </div>
+                <p className="text-xs text-gray-400">
+                  Export your entire catalog ({movies.length} titles) to a <code className="text-amber-300">movieflix_catalog.json</code> file, or restore data on a new browser/device.
+                </p>
+              </div>
+
+              <div className="flex flex-col sm:flex-row gap-3 pt-2">
+                <button
+                  onClick={handleExportJSON}
+                  className="flex-1 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/30 font-bold px-4 py-2.5 rounded-xl text-xs flex items-center justify-center space-x-2 transition-all"
+                  id="admin-export-json-btn"
+                >
+                  <Download className="w-4 h-4" />
+                  <span>Download JSON Backup</span>
+                </button>
+
+                <label className="flex-1 bg-zinc-800 hover:bg-zinc-700 text-white font-bold px-4 py-2.5 rounded-xl text-xs flex items-center justify-center space-x-2 border border-white/10 cursor-pointer transition-all">
+                  <Upload className="w-4 h-4 text-emerald-400" />
+                  <span>Import JSON File</span>
+                  <input
+                    type="file"
+                    accept=".json"
+                    onChange={handleImportJSON}
+                    className="hidden"
+                    id="admin-import-json-input"
+                  />
+                </label>
+              </div>
+            </div>
+
+            {/* Copy Code for Deployment */}
+            <div className="p-6 rounded-3xl bg-zinc-900 border border-white/10 space-y-4 flex flex-col justify-between">
+              <div className="space-y-2">
+                <div className="flex items-center space-x-2 text-emerald-400">
+                  <Copy className="w-5 h-5" />
+                  <h4 className="font-bold text-white text-sm">Deploy Permanent Public Catalog</h4>
+                </div>
+                <p className="text-xs text-gray-400">
+                  Copy the complete TypeScript code for <code className="text-emerald-300">src/data/initialMovies.ts</code> so that every visitor sees all added movies automatically.
+                </p>
+              </div>
+
+              <button
+                onClick={handleCopyTSCode}
+                className="w-full bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 text-black font-black px-4 py-3 rounded-xl text-xs uppercase tracking-wider flex items-center justify-center space-x-2 shadow-lg shadow-emerald-950/50 transition-all"
+                id="admin-copy-ts-code-btn"
+              >
+                <Copy className="w-4 h-4 fill-black" />
+                <span>Copy Code for initialMovies.ts</span>
+              </button>
+            </div>
+          </div>
         </div>
       )}
 

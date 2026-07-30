@@ -30,6 +30,9 @@ export function getStoredMovies(): Movie[] {
 export function saveMoviesCatalog(movies: Movie[]) {
   try {
     localStorage.setItem(KEYS.MOVIES, JSON.stringify(movies));
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('movieflix_catalog_updated', { detail: movies }));
+    }
   } catch (err) {
     console.error('Failed to save catalog:', err);
   }
@@ -37,6 +40,9 @@ export function saveMoviesCatalog(movies: Movie[]) {
 
 export function resetMoviesCatalog(): Movie[] {
   localStorage.setItem(KEYS.MOVIES, JSON.stringify(INITIAL_MOVIES));
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('movieflix_catalog_updated', { detail: INITIAL_MOVIES }));
+  }
   return INITIAL_MOVIES;
 }
 

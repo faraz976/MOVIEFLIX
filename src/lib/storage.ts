@@ -46,6 +46,27 @@ export function resetMoviesCatalog(): Movie[] {
   return INITIAL_MOVIES;
 }
 
+export function addMovieToCatalog(movie: Movie): Movie[] {
+  const current = getStoredMovies();
+  const updated = [movie, ...current];
+  saveMoviesCatalog(updated);
+  return updated;
+}
+
+export function updateMovieInCatalog(movie: Movie): Movie[] {
+  const current = getStoredMovies();
+  const updated = current.map((m) => (m.id === movie.id ? movie : m));
+  saveMoviesCatalog(updated);
+  return updated;
+}
+
+export function deleteMovieFromCatalog(movieId: string): Movie[] {
+  const current = getStoredMovies();
+  const updated = current.filter((m) => m.id !== movieId);
+  saveMoviesCatalog(updated);
+  return updated;
+}
+
 // --- Favorites Storage ---
 export function getStoredFavorites(): string[] {
   try {
@@ -65,6 +86,9 @@ export function toggleFavoriteMovie(movieId: string): string[] {
     updated = [...current, movieId];
   }
   localStorage.setItem(KEYS.FAVORITES, JSON.stringify(updated));
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('movieflix_favorites_updated', { detail: updated }));
+  }
   return updated;
 }
 
@@ -87,6 +111,9 @@ export function saveWatchProgress(progress: WatchProgress) {
     current[progress.movieId] = progress;
   }
   localStorage.setItem(KEYS.PROGRESS, JSON.stringify(current));
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('movieflix_progress_updated', { detail: current }));
+  }
   addToWatchHistory(progress.movieId);
 }
 
@@ -119,6 +146,9 @@ export function getBunnySettings(): BunnyStreamSettings {
 
 export function saveBunnySettings(settings: BunnyStreamSettings) {
   localStorage.setItem(KEYS.BUNNY_SETTINGS, JSON.stringify(settings));
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('movieflix_settings_updated', { detail: settings }));
+  }
 }
 
 // --- Admin Authentication & PIN ---

@@ -67,22 +67,59 @@ export default function App() {
     if (user?.isAdmin) setIsAdmin(true);
   }, []);
 
-  // Update progress dict & catalog live when user streams or admin saves
+  // Sync storage & custom events live across the application
   useEffect(() => {
-    const handleStorageChange = (e?: any) => {
-      if (e && e.detail) {
+    const handleCatalogUpdated = (e: any) => {
+      if (e.detail && Array.isArray(e.detail)) {
         setMovies(e.detail);
       } else {
         setMovies(getStoredMovies());
       }
+    };
+
+    const handleFavoritesUpdated = (e: any) => {
+      if (e.detail) {
+        setFavorites(e.detail);
+      } else {
+        setFavorites(getStoredFavorites());
+      }
+    };
+
+    const handleProgressUpdated = (e: any) => {
+      if (e.detail) {
+        setProgressDict(e.detail);
+      } else {
+        setProgressDict(getStoredProgress());
+      }
+    };
+
+    const handleSettingsUpdated = (e: any) => {
+      if (e.detail) {
+        setBunnySettingsState(e.detail);
+      } else {
+        setBunnySettingsState(getBunnySettings());
+      }
+    };
+
+    const handleStorageChange = () => {
+      setMovies(getStoredMovies());
+      setFavorites(getStoredFavorites());
       setProgressDict(getStoredProgress());
       setBunnySettingsState(getBunnySettings());
     };
+
     window.addEventListener('storage', handleStorageChange);
-    window.addEventListener('movieflix_catalog_updated', handleStorageChange);
+    window.addEventListener('movieflix_catalog_updated', handleCatalogUpdated);
+    window.addEventListener('movieflix_favorites_updated', handleFavoritesUpdated);
+    window.addEventListener('movieflix_progress_updated', handleProgressUpdated);
+    window.addEventListener('movieflix_settings_updated', handleSettingsUpdated);
+
     return () => {
       window.removeEventListener('storage', handleStorageChange);
-      window.removeEventListener('movieflix_catalog_updated', handleStorageChange);
+      window.removeEventListener('movieflix_catalog_updated', handleCatalogUpdated);
+      window.removeEventListener('movieflix_favorites_updated', handleFavoritesUpdated);
+      window.removeEventListener('movieflix_progress_updated', handleProgressUpdated);
+      window.removeEventListener('movieflix_settings_updated', handleSettingsUpdated);
     };
   }, []);
 

@@ -829,17 +829,17 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
 
                   <div>
                     <label className="text-gray-300 font-bold block mb-1 text-xs">
-                      Direct Video URL (MP4 / HLS .m3u8 / YouTube)
+                      Direct Video URL (MP4 / YouTube / Google Drive)
                     </label>
                     <input
                       type="text"
                       value={formState.directStreamUrl || ''}
                       onChange={(e) => setFormState({ ...formState, directStreamUrl: e.target.value })}
-                      placeholder="https://commondatastorage.googleapis.com/.../video.mp4"
+                      placeholder="https://drive.google.com/file/d/.../view"
                       className="w-full bg-zinc-900 border border-white/15 rounded-xl p-2 text-white font-mono text-xs focus:border-amber-500 focus:outline-none"
                     />
                     <p className="text-[10px] text-gray-400 mt-1">
-                      Supports direct .mp4, HLS .m3u8 playlists, or YouTube links.
+                      Supports direct .mp4, HLS, YouTube links, or Google Drive links.
                     </p>
                   </div>
                 </div>

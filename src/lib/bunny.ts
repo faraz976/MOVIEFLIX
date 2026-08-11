@@ -28,6 +28,15 @@ export function parseYouTubeVideoId(url: string): string | null {
 }
 
 /**
+ * Extract Google Drive video ID if given a Google Drive link
+ */
+export function parseGoogleDriveVideoId(url: string): string | null {
+  if (!url) return null;
+  const match = url.match(/drive\.google\.com\/(?:file\/d\/|open\?id=)([a-zA-Z0-9_-]+)/);
+  return match ? match[1] : null;
+}
+
+/**
  * Get Bunny Stream Embed iframe URL for a video ID
  */
 export function getBunnyEmbedUrl(
@@ -89,6 +98,16 @@ export function resolveVideoStreamUrl(
         type: 'embed',
         url: `https://www.youtube-nocookie.com/embed/${ytId}?autoplay=1&rel=0`,
         sourceName: 'YouTube Player',
+      };
+    }
+
+    // Check Google Drive link
+    const gDriveId = parseGoogleDriveVideoId(cleanUrl);
+    if (gDriveId) {
+      return {
+        type: 'embed',
+        url: `https://drive.google.com/file/d/${gDriveId}/preview`,
+        sourceName: 'Google Drive Player',
       };
     }
 
